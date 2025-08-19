@@ -1,70 +1,165 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Passcode</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>iPhone Dialpad – Replica</title>
+<style>
+  :root{
+    --bg:#000;
+    --key:#2b2b2d;           /* dark circular keys */
+    --key-hover:#37373a;
+    --key-press:#1f1f21;
+    --text:#fff;
+    --sub:#9a9aa1;
+    --accent:#0ac75a;        /* call button green */
+    --ios-blue:#0a84ff;      /* active tab */
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  }
 
-  <!-- Manifest (relative path) -->
-  <link rel="manifest" href="manifest.json">
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;
+    justify-content:center;
+  }
 
-  <!-- iOS PWA support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Passcode">
+  /* Phone canvas (keeps proportions similar to iPhone screens) */
+  .phone{
+    position:relative;
+    width:min(430px, 100vw);
+    height:100dvh;
+    overflow:hidden;
+    background:var(--bg);
+  }
 
-  <!-- iOS home icons (relative path) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png">
-  <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png">
+  /* Status bar (top) */
+  .status{
+    position:absolute; inset:0 0 auto 0;
+    height:44px; padding-top:var(--safe-top);
+    display:flex; align-items:flex-end; justify-content:space-between;
+    padding: 0 14px calc(6px + var(--safe-top));
+    font-weight:600;
+    letter-spacing:0.2px;
+  }
+  .status .right{
+    display:flex; align-items:center; gap:8px; font-size:12px;
+  }
+  .pill{
+    display:inline-flex; align-items:center; gap:4px;
+    background:#1a1a1c; color:#ffcd00; border-radius:9px; padding:2px 6px; font-size:11px;
+  }
+  .icon{display:inline-block; vertical-align:middle}
 
-  <meta name="theme-color" content="#000000">
+  /* Number display area (appears when you type) */
+  .display{
+    position:absolute; left:0; right:0; top:64px;
+    min-height:56px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px; font-weight:500; letter-spacing:1px;
+    transition:opacity .2s ease;
+    user-select:text;
+  }
+  .hint{
+    position:absolute; left:0; right:0; top:120px;
+    text-align:center; color:var(--sub); font-size:14px;
+  }
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="styles.css">
+  /* Keypad grid */
+  .grid{
+    position:absolute; left:0; right:0;
+    top: calc(150px); /* leaves room for display */
+    bottom: 120px;    /* leaves room for call + tab bar */
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    grid-auto-rows:1fr;
+    gap:18px 18px;
+    padding:0 34px;
+  }
+  /* maintain circle sizing similar to iOS */
+  .key{
+    background:var(--key);
+    border-radius:50%;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    position:relative;
+    box-shadow: 0 2px 0 rgba(255,255,255,.02) inset,
+                0 8px 24px rgba(0,0,0,.45);
+    cursor:pointer; user-select:none;
+    transition:transform .06s ease, background .08s ease;
+    touch-action:manipulation;
+  }
+  .key:active, .key.pressed{ transform:scale(.96); background:var(--key-press); }
+  .key:hover{ background:var(--key-hover); }
+  .num{ font-size:34px; line-height:1; font-weight:600; }
+  .letters{ margin-top:4px; font-size:11px; letter-spacing:2px; color:#cfcfd6; }
+
+  /* Star, hash & zero use smaller letters line */
+  .letters.dim{ color:#b0b0b6 }
+
+  /* Call button */
+  .call{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom: calc(78px + var(--safe-bottom));
+    width:78px; height:78px; border-radius:50%;
+    background:var(--accent);
+    display:grid; place-items:center;
+    box-shadow: 0 14px 30px rgba(10,199,90,.45);
+    cursor:pointer;
+    transition:transform .06s ease, filter .08s ease;
+  }
+  .call:active{ transform:translateX(-50%) scale(.97); filter:brightness(.95); }
+
+  /* Bottom Tab Bar */
+  .tabbar{
+    position:absolute; left:0; right:0; bottom:0;
+    padding-bottom: max(8px, var(--safe-bottom));
+    background:rgba(12,12,12,.9);
+    border-top:1px solid rgba(255,255,255,.06);
+    height:86px;
+    display:flex; align-items:flex-end; justify-content:space-around;
+  }
+  .tab{
+    flex:1; text-align:center; color:#c9c9cf; padding:10px 0 8px;
+    font-size:11px;
+  }
+  .tab .icon{display:block; margin:0 auto 4px}
+  .tab.active{ color:var(--ios-blue); }
+  .tab .dots{ color: currentColor }
+
+  /* Accessibility focus ring */
+  .key:focus-visible, .call:focus-visible, .tab:focus-visible{
+    outline:2px solid #4da3ff; outline-offset:2px;
+  }
+
+  /* Fine-tuning sizes at smaller widths */
+  @media (max-width:360px){
+    .grid{ gap:14px; padding:0 24px; }
+    .num{ font-size:30px }
+    .call{ width:72px; height:72px }
+  }
+</style>
 </head>
 <body>
-  <div class="lockscreen">
-    <div class="prompt">Swipe up for Face ID or<br>Enter Passcode</div>
-
-    <!-- 4 dots -->
-    <div class="dots" id="dots" aria-hidden="true">
-      <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-    </div>
-
-    <!-- keypad -->
-    <div class="keypad" id="keypad" role="group" aria-label="Passcode keypad">
-      <button class="key" data-num="1"><span class="num">1</span><span class="letters"></span></button>
-      <button class="key" data-num="2"><span class="num">2</span><span class="letters">ABC</span></button>
-      <button class="key" data-num="3"><span class="num">3</span><span class="letters">DEF</span></button>
-
-      <button class="key" data-num="4"><span class="num">4</span><span class="letters">GHI</span></button>
-      <button class="key" data-num="5"><span class="num">5</span><span class="letters">JKL</span></button>
-      <button class="key" data-num="6"><span class="num">6</span><span class="letters">MNO</span></button>
-
-      <button class="key" data-num="7"><span class="num">7</span><span class="letters">PQRS</span></button>
-      <button class="key" data-num="8"><span class="num">8</span><span class="letters">TUV</span></button>
-      <button class="key" data-num="9"><span class="num">9</span><span class="letters">WXYZ</span></button>
-
-      <!-- spacer / 0 / spacer -->
-      <div class="key empty" aria-hidden="true"></div>
-      <button class="key" data-num="0"><span class="num">0</span><span class="letters"></span></button>
-      <div class="key empty" aria-hidden="true"></div>
-    </div>
-
-    <!-- bottom actions -->
-    <div class="bottom-actions">
-      <button class="action" id="emergency">Emergency</button>
-      <button class="action" id="cancel">Cancel</button>
-    </div>
-  </div>
-
-  <script src="app.js" defer></script>
-  <script>
-    // register service worker (relative path)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-    }
-  </script>
-</body>
-</html>
+<div class="phone" role="application" aria-label="Phone Keypad">
+  <!-- STATUS BAR -->
+  <div class="status" aria-hidden="true">
+    <div class="left" id="clock">7:26</div>
+    <div class="right">
+      <!-- cellular -->
+      <svg class="icon" width="20" height="12" viewBox="0 0 20 12" fill="#fff" aria-hidden="true">
+        <rect x="0" y="8" width="3" height="4" rx="1"></rect>
+        <rect x="5" y="6" width="3" height="6" rx="1"></rect>
+        <rect x="10" y="4" width="3" height="8" rx="1"></rect>
+        <rect x="15" y="2" width="3" height="10" rx="1"></rect>
+      </svg>
+      <!-- wifi -->
+      <svg class="icon" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-widt
